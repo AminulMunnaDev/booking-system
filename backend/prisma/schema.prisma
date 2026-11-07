@@ -1,0 +1,100 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BusType {
+  AC
+  NON_AC
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  phone     String
+  password  String
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+}
+
+model Bus {
+  id         Int      @id @default(autoincrement())
+  name       String
+  plateNo    String   @unique
+  type       BusType
+  totalSeats Int      @default(40)
+  createdAt  DateTime @default(now())
+  trips      Trip[]
+}
+
+model Route {
+  id         Int      @id @default(autoincrement())
+  fromCity   String
+  toCity     String
+  distanceKm Int?
+  createdAt  DateTime @default(now())
+  trips      Trip[]
+
+  @@unique([fromCity, toCity])
+}
+
+model Trip {
+  id            Int           @id @default(autoincrement())
+  routeId       Int
+  busId         Int
+  travelDate    DateTime      @db.Date
+  departureTime String
+  arrivalTime   String?
+  price         Int
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  route         Route         @relation(fields: [routeId], references: [id])
+  bus           Bus           @relation(fields: [busId], references: [id])
+  bookings      Booking[]
+  seats         BookingSeat[]
+
+  @@index([routeId, travelDate])
+}
+
+model Booking {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  tripId      Int
+  totalAmount Int
+  status      BookingStatus @default(CONFIRMED)
+  createdAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id])
+  trip        Trip          @relation(fields: [tripId], references: [id])
+  seats       BookingSeat[]
+}
+
+model BookingSeat {
+  id             Int     @id @default(autoincrement())
+  bookingId      Int
+  tripId         Int
+  seatNumber     String
+  passengerName  String
+  passengerPhone String?
+  gender         String?
+  booking        Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  trip           Trip    @relation(fields: [tripId], references: [id])
+
+  @@unique([tripId, seatNumber])
+}
