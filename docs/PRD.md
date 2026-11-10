@@ -59,6 +59,16 @@ This is a university web programming project. It must be a dynamic website with 
 - A user can only view and cancel their own bookings.
 - Only admins can access `/admin` pages and `/api/admin` endpoints.
 - A bus or route that has trips cannot be deleted (block deletion, show a clear message).
+- Registration always creates a USER. The admin account is created only by the seed script.
+- Email is stored in lowercase and must be unique. Password must be at least 6 characters.
+- A route (From city + To city) must be unique, and From and To must be different.
+- A bus plate number must be unique.
+- A trip cannot be created with a past travel date.
+- The same bus cannot have two trips at the same date and departure time.
+- The bus of a trip cannot be changed once seats are booked on it.
+- A trip with bookings cannot be deleted. Admin sets it inactive (isActive = false) to hide it from search.
+- A bus or route that has trips cannot be deleted (this rule was already listed, now enforced).
+- Times use 24-hour HH:MM format. Prices are whole numbers in BDT.
 
 ## 7. Constraints
 - Free tools only. Free-tier AI chat has limited messages, so work in small steps and keep these docs handy.
@@ -71,3 +81,8 @@ This is a university web programming project. It must be a dynamic website with 
 - Two users cannot book the same seat on the same trip.
 - Cancelling a booking makes the seats available again.
 - Dashboard numbers match the data.
+## 9. Progress
+- [x] Step 1: Backend setup, database, Prisma schema
+- [x] Step 2: Authentication (register, login, me, role middleware, seed)
+- [x] Step 3: Admin CRUD API (buses, routes, trips)
+- [ ] Step 4 onward: see IMPLEMENTATION_PLAN.md

@@ -61,3 +61,5 @@ NEXT_PUBLIC_API_URL=http://localhost:5000/api
 - **MySQL + Prisma** because the data is relational and needs a unique constraint and transactions.
 - **JWT in Authorization header** (`Bearer <token>`). Frontend stores the token in localStorage for simplicity.
 - **Simple REST JSON API**, no GraphQL.
+
+Add “Prisma is pinned to version 6. Do not upgrade.” Also note Express 5 and zod 4.

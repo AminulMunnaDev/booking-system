@@ -26,6 +26,8 @@ app.get("/api/health", async (req, res, next) => {
 // Routes will be added in the next steps:
 app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/admin", require("./routes/admin.routes"));
+app.use("/api", require("./routes/public.routes"));
+
 
 app.use(notFound);
 app.use(errorHandler);

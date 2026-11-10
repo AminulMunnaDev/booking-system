@@ -29,6 +29,7 @@ Read: `BACKEND_STRUCTURE.md` (sections 4 and 6).
 - [ ] Block delete when related trips exist (return a clear message).
 - [ ] Pagination on the trips list.
 - **Done when:** you can create a bus, route, and trip via Postman, and a USER token gets `403`.
+done till here
 
 ## Step 4: Public Search API
 - [ ] `GET /cities`, `GET /trips/search`, `GET /trips/:id`, `GET /trips/popular-routes`.

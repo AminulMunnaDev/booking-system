@@ -238,3 +238,6 @@ Seats left = `bus.totalSeats - count(BookingSeat for the trip)`.
 - Test user: `user@bus.com` / `User@123`.
 - Cities: Dhaka, Chattogram, Sylhet, Cox's Bazar, Rajshahi, Khulna.
 - 3 to 5 buses, 6 to 8 routes, 10 to 15 trips over the next 7 days.
+
+
+Add that list endpoints return { data: [...] }, and the trips list also returns page, limit, total, totalPages. Add “Register returns the user only (no token), the user then logs in.”
