@@ -8,9 +8,6 @@ router.post("/register", validate(registerSchema), register);
 router.post("/login", validate(loginSchema), login);
 router.get("/me", verifyToken, me);
 
-// TEMPORARY: only to test the ADMIN role check. Delete after testing.
-router.get("/admin-check", verifyToken, requireRole("ADMIN"), (req, res) => {
-  res.json({ message: "Hello admin, role check works" });
-});
+
 
 module.exports = router;
