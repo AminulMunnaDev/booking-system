@@ -86,3 +86,5 @@ This is a university web programming project. It must be a dynamic website with 
 - [x] Step 2: Authentication (register, login, me, role middleware, seed)
 - [x] Step 3: Admin CRUD API (buses, routes, trips)
 - [ ] Step 4 onward: see IMPLEMENTATION_PLAN.md
+
+4,5 done

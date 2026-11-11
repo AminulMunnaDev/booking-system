@@ -94,3 +94,4 @@ When you start a new conversation, paste this:
 3. Any error message you are stuck on, with the file it came from.
 
 Ask for **one full step at a time** and test before asking for the next. This uses fewer messages than back-and-forth debugging.
+4,5 done
