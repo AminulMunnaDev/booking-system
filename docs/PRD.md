@@ -10,6 +10,7 @@ This is a university web programming project. It must be a dynamic website with 
 - Give the admin full CRUD control over the product data.
 - Prevent double booking of the same seat.
 - Be finishable by one student in several days, using free tools only.
+- Build a simple, working UI first, then redesign it once everything works.
 
 ## 3. Users and Roles
 | Role | Description |
@@ -45,6 +46,7 @@ This is a university web programming project. It must be a dynamic website with 
 - Bus image upload.
 - Email confirmation.
 - Operator role (bus companies manage only their own buses).
+- Date filter on the admin trips list.
 - Mobile app (Kotlin + Jetpack Compose) using the same REST API, built after the website is finished.
 
 ## 5. Out of Scope
@@ -58,7 +60,7 @@ This is a university web programming project. It must be a dynamic website with 
 - A seat can belong to only one active booking per trip (database unique rule on trip + seat number).
 - A booking has 1 to 4 seats. The same seat cannot be selected twice in one booking.
 - Seats are labelled A1, A2, A3, A4, B1 ... (4 per row, 2 + 2 layout). A 40-seat bus uses A1 to J4.
-- A booking is all or nothing: if any seat is already taken, the whole booking fails with a clear message.
+- A booking is all or nothing: if any seat is already taken, the whole booking fails with a clear message and the user is sent back to the seat page.
 - New bookings are CONFIRMED immediately (there is no payment step).
 - Cancelling a booking frees its seats immediately (the seat rows are deleted, so a cancelled booking shows no seats).
 - A cancelled booking cannot be confirmed again. The user must book again.
@@ -67,9 +69,14 @@ This is a university web programming project. It must be a dynamic website with 
 - Search hides today's trips that have already departed.
 - All dates and times use Bangladesh time (UTC+6).
 
+### Customer flow
+- Guests can search and view seats, but must log in to continue. After login they return to the trip they chose.
+- On the passenger page the first passenger is prefilled with the logged-in user's name and phone.
+- The ticket page can be printed. The navbar and buttons are hidden when printing.
+
 ### Access and accounts
 - A user can only view and cancel their own bookings. Admins can view and cancel any booking.
-- Only admins can access `/admin` pages and `/api/admin` endpoints.
+- Only admins can access `/admin` pages and `/api/admin` endpoints. Normal users are redirected to the home page.
 - Registration always creates a USER. The admin account is created only by the seed script.
 - An admin cannot change their own role.
 - Email is stored in lowercase and must be unique. Password must be at least 6 characters.
@@ -93,22 +100,27 @@ This is a university web programming project. It must be a dynamic website with 
 - Several days of development time.
 - Stack: Next.js + Tailwind + shadcn/ui, Express, MySQL, Prisma 6 (pinned, do not upgrade).
 
-## 8. Success Criteria
+## 8. UI Approach
+- The first version of the UI is intentionally plain: tables, dialogs, native dropdowns, and simple cards.
+- Logic is kept separate from styling. Shared pieces (`DataTable`, `PageHeader`, `StatusBadge`, `ConfirmDialog`, `Field`, `SeatGrid`, `TripCard`, `SearchForm`) are small components, so a redesign only needs changes in a few files.
+- A redesign pass happens after all features work (see Step 9 in `IMPLEMENTATION_PLAN.md`).
+
+## 9. Success Criteria
 - Admin can create a bus, route, and trip, and it appears in public search.
 - A user can book seats, and those seats show as booked for everyone else.
 - Two users cannot book the same seat on the same trip.
 - Cancelling a booking makes the seats available again.
 - Dashboard numbers match the data.
 
-## 9. Progress
+## 10. Progress
 - [x] Step 1: Backend setup, database, Prisma schema
 - [x] Step 2: Authentication (register, login, me, role middleware, seed)
 - [x] Step 3: Admin CRUD API (buses, routes, trips)
 - [x] Step 4: Public search API (cities, search, trip details, popular routes)
 - [x] Step 5: Booking API, cancel, admin bookings, users, dashboard stats
 - [x] Step 6: Frontend setup, layout, navbar, login and register pages, route guard
-- [ ] Step 7: Admin dashboard UI
-- [ ] Step 8: Public and user pages (search, seat picker, booking, my bookings, ticket)
-- [ ] Step 9: Polish, README, ER diagram
+- [x] Step 7: Admin dashboard UI (dashboard, buses, routes, trips, bookings, users)
+- [x] Step 8: Public and user pages (home search, results, seat picker, booking, my bookings, ticket). Full journey test still to be confirmed.
+- [ ] Step 9: Polish, redesign, README, ER diagram
 
-The backend is complete. Remaining work is the frontend (Steps 7 to 9). See `IMPLEMENTATION_PLAN.md`.
+The backend is complete and both the admin and customer screens are built. Remaining work is testing, polish, and the redesign. See `IMPLEMENTATION_PLAN.md`.
