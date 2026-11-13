@@ -9,7 +9,7 @@ export default function Navbar() {
   const { user, loading, logout } = useAuth();
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-white">
+    <header className="sticky top-0 z-40 border-b bg-white print:hidden">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold text-green-600">
           <Bus className="h-6 w-6" />
@@ -30,12 +30,15 @@ export default function Navbar() {
 
           {!loading && user && (
             <>
+              <Link href="/my-bookings" className={buttonVariants({ variant: "ghost" })}>
+                My Bookings
+              </Link>
               {user.role === "ADMIN" && (
                 <Link href="/admin" className={buttonVariants({ variant: "ghost" })}>
                   Admin
                 </Link>
               )}
-              <span className="hidden text-sm text-slate-600 sm:inline">{user.name}</span>
+              <span className="hidden text-sm text-slate-600 md:inline">{user.name}</span>
               <Button variant="outline" onClick={logout}>
                 Logout
               </Button>
