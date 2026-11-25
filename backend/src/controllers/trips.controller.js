@@ -5,6 +5,8 @@ const generateSeats = require("../utils/generateSeats");
 const { dhakaNow, hasDeparted } = require("../utils/dhakaTime");
 const { searchSchema } = require("../validators/trip.validator");
 
+const toDate = (s) => new Date(`${s}T00:00:00.000Z`);
+
 // GET /api/cities  -> ["Chattogram", "Dhaka", ...]
 async function getCities(req, res, next) {
   try {
@@ -20,28 +22,37 @@ async function getCities(req, res, next) {
   }
 }
 
-// GET /api/trips/search?from=Dhaka&to=Chattogram&date=2026-11-15&type=AC&sort=price
+// GET /api/trips/search?from=Dhaka&to=Rangpur&dateFrom=2026-11-23&dateTo=2026-11-27
+// Also accepts a single day: ?date=2026-11-23   Optional: type=AC|NON_AC, sort=time|price
+// Results are ordered by date first, then by time (or price) inside each day.
 async function searchTrips(req, res, next) {
   try {
     const q = searchSchema.parse(req.query);
+    const start = q.dateFrom || q.date;
+    const end = q.dateTo || start;
     const now = dhakaNow();
 
-    // Past dates have no bookable trips
-    if (q.date < now.date) return res.json({ data: [], total: 0 });
+    // The whole range is in the past: nothing to show
+    if (end < now.date) {
+      return res.json({ data: [], total: 0, dateFrom: start, dateTo: end });
+    }
+
+    // Never search before today
+    const effectiveStart = start < now.date ? now.date : start;
 
     const where = {
       isActive: true,
-      travelDate: new Date(`${q.date}T00:00:00.000Z`),
+      travelDate: { gte: toDate(effectiveStart), lte: toDate(end) },
       route: { fromCity: q.from, toCity: q.to },
+      // Today: hide trips that already left. Later days: show everything.
+      OR: [{ travelDate: { gt: toDate(now.date) } }, { departureTime: { gt: now.time } }],
     };
     if (q.type) where.bus = { type: q.type };
-    // Today: hide trips that have already left
-    if (q.date === now.date) where.departureTime = { gt: now.time };
 
-    const orderBy =
-      q.sort === "price"
-        ? [{ price: "asc" }, { departureTime: "asc" }]
-        : [{ departureTime: "asc" }];
+    const orderBy = [
+      { travelDate: "asc" },
+      ...(q.sort === "price" ? [{ price: "asc" }, { departureTime: "asc" }] : [{ departureTime: "asc" }]),
+    ];
 
     const trips = await prisma.trip.findMany({
       where,
@@ -65,7 +76,7 @@ async function searchTrips(req, res, next) {
       seatsLeft: t.bus.totalSeats - t._count.seats,
     }));
 
-    res.json({ data, total: data.length });
+    res.json({ data, total: data.length, dateFrom: start, dateTo: end });
   } catch (err) {
     next(err);
   }
