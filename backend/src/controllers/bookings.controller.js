@@ -3,13 +3,14 @@ const AppError = require("../utils/AppError");
 const parseId = require("../utils/parseId");
 const generateSeats = require("../utils/generateSeats");
 const cancelBookingById = require("../utils/cancelBooking");
+const { makePaymentRef } = require("../utils/payment");
 const { hasDeparted } = require("../utils/dhakaTime");
 const { bookingInclude, formatBooking } = require("../utils/formatBooking");
 
 // POST /api/bookings
 async function createBooking(req, res, next) {
   try {
-    const { tripId, passengers } = req.body;
+    const { tripId, passengers, requirePayment } = req.body;
 
     const trip = await prisma.trip.findUnique({ where: { id: tripId }, include: { bus: true } });
     if (!trip || !trip.isActive) throw new AppError("Trip not found", 404);
@@ -25,6 +26,8 @@ async function createBooking(req, res, next) {
       }
     }
 
+    const status = requirePayment ? "PENDING" : "CONFIRMED";
+
     let bookingId;
     try {
       // All or nothing: if any seat is taken, the whole booking is rolled back
@@ -34,7 +37,7 @@ async function createBooking(req, res, next) {
             userId: req.user.id,
             tripId,
             totalAmount: trip.price * passengers.length,
-            status: "CONFIRMED",
+            status,
           },
         });
 
@@ -60,7 +63,39 @@ async function createBooking(req, res, next) {
     }
 
     const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: bookingInclude });
-    res.status(201).json({ message: "Booking confirmed", data: formatBooking(booking) });
+    res.status(201).json({
+      message: requirePayment ? "Seats held. Complete the payment to confirm your booking." : "Booking confirmed",
+      data: formatBooking(booking),
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /api/bookings/:id/pay   body: { "method": "CARD" | "BKASH" | "NAGAD" | "ROCKET" | "UPAY" }
+// DEMO ONLY: no real payment happens. It just records the method and a fake transaction id.
+async function payBooking(req, res, next) {
+  try {
+    const id = parseId(req.params.id);
+    const { method } = req.body;
+
+    const booking = await prisma.booking.findUnique({ where: { id } });
+    if (!booking) throw new AppError("Booking not found", 404);
+    if (booking.userId !== req.user.id) throw new AppError("You cannot pay for this booking", 403);
+    if (booking.status === "CANCELLED") {
+      throw new AppError("This booking has expired or was cancelled. Please book again.", 400);
+    }
+    if (booking.status === "CONFIRMED") throw new AppError("This booking is already paid", 400);
+
+    // updateMany only changes a booking that is still PENDING, so a double click cannot pay twice
+    const result = await prisma.booking.updateMany({
+      where: { id, status: "PENDING" },
+      data: { status: "CONFIRMED", paymentMethod: method, paymentRef: makePaymentRef(), paidAt: new Date() },
+    });
+    if (result.count === 0) throw new AppError("This booking can no longer be paid", 409);
+
+    const updated = await prisma.booking.findUnique({ where: { id }, include: bookingInclude });
+    res.json({ message: "Payment successful", data: formatBooking(updated) });
   } catch (err) {
     next(err);
   }
@@ -121,4 +156,4 @@ async function cancelBooking(req, res, next) {
   }
 }
 
-module.exports = { createBooking, myBookings, getBooking, cancelBooking };
+module.exports = { createBooking, payBooking, myBookings, getBooking, cancelBooking };

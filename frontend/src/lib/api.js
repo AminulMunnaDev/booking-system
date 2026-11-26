@@ -51,7 +51,7 @@ export async function api(path, { method = "GET", body, auth = true, redirectOn4
     if (res.status === 401 && token) {
       clearToken();
       if (redirectOn401 && typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.href = "/login";
+        window.location.assign(new URL("/login", window.location.origin).toString());
       }
     }
     throw new ApiError(data?.message || "Something went wrong", res.status, data?.errors);

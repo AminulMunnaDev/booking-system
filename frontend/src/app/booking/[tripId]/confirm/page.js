@@ -82,6 +82,7 @@ function ConfirmContent() {
     try {
       const body = {
         tripId: Number(tripId),
+        requirePayment: true,
         passengers: seats.map((seat, i) => {
           const p = get(seat, i);
           const out = { seatNumber: seat, name: p.name };
@@ -91,8 +92,8 @@ function ConfirmContent() {
         }),
       };
       const res = await api("/bookings", { method: "POST", body });
-      toast.success("Booking confirmed");
-      router.replace(`/tickets/${res.data.id}`);
+      toast.success("Seats held. Complete payment to confirm.");
+      router.replace(`/payment/${res.data.id}`);
     } catch (err) {
       toast.error(err.errors?.length ? `${err.message}: ${err.errors[0].message}` : err.message);
       if (err.status === 409) router.push(`/trips/${tripId}`);
@@ -171,11 +172,11 @@ function ConfirmContent() {
           </div>
 
           <Button type="submit" form="passenger-form" disabled={submitting} className="w-full bg-green-600 hover:bg-green-700">
-            {submitting ? "Booking..." : `Confirm booking - ${formatPrice(trip.price * seats.length)}`}
+            {submitting ? "Holding seats..." : `Continue to payment - ${formatPrice(trip.price * seats.length)}`}
           </Button>
 
           <ul className="space-y-1 text-xs text-slate-500">
-            <li>Your ticket will appear in My Bookings.</li>
+            <li>Seats are held for 10 minutes while you complete payment.</li>
             <li>Free cancellation any time before departure.</li>
           </ul>
         </div>

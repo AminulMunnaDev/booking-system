@@ -1,122 +1,110 @@
 # IMPLEMENTATION PLAN
 
-Work step by step. Finish and test each step before starting the next. Commit to Git after each step.
+Work step by step, verify each change against running servers, and commit clean milestones to Git.
 
 ## Current Status
-**Steps 1 to 8 are built. The backend is complete, the admin dashboard works, and the customer journey (search, seats, booking, my bookings, ticket) is in place.**
-Next: confirm the full journey test (see Step 8), then Step 9 (polish and redesign).
+- **Steps 1–8 are implemented and committed**, including backend API, security hardening (`helmet`, CORS allowlist, auth rate limiter, Zod 4 validation), admin dashboard UI, and the redesigned customer search, seat selection, and passenger details flow.
+- **Step 9 (Demo Payment Flow) is partially implemented** in the working tree:
+  - Done: `POST /api/bookings/:id/pay`, `requirePayment` validation, `backend/src/utils/payment.js`, `backend/src/middleware/expireUnpaid.js`, `formatBooking` payment fields/countdown, 5-step `Stepper`, `frontend/src/lib/payment.js`, `/payment/[bookingId]/success`, and updated `my-bookings` / `tickets/[bookingId]`.
+  - Remaining: add payment columns to Prisma `Booking` model + migrate, move `expireUnpaid` middleware before route handlers in `backend/src/app.js`, implement checkout UI in `frontend/src/app/payment/[bookingId]/page.js`, and wire `booking/[tripId]/confirm/page.js` to pass `requirePayment: true` and redirect to `/payment/[bookingId]`.
+- **Step 10 (Final Polish & Submission)** follows immediately after Step 9.
 
-## Before You Start
-- [x] Install Node.js LTS, MySQL (XAMPP), Git, editor.
-- [x] Create folder `bus-booking/` with `docs/`, `backend/`, `frontend/`.
-- [x] Create a GitHub repo and push.
-- [x] Create the database: `CREATE DATABASE bus_booking;`
+## Completed Steps
 
-## Step 1: Backend Setup and Database (DONE)
-- [x] Init backend, install packages (Prisma pinned to version 6).
-- [x] Add `.env`.
-- [x] Write `schema.prisma`, run `npx prisma migrate dev --name init`.
-- [x] Create `app.js`, `server.js`, `config/prisma.js`, `errorHandler.js`.
-- [x] Add `GET /api/health`.
+### Before You Start (DONE)
+- [x] Node.js LTS, MySQL (XAMPP), Git installed; database `bus_booking` created.
+- [x] Monorepo folders: `docs/`, `backend/`, `frontend/`.
 
-## Step 2: Authentication (DONE)
-- [x] `POST /auth/register`, `POST /auth/login`, `GET /auth/me`.
-- [x] `verifyToken` and `requireRole` middleware.
-- [x] Seed script creates the admin and a test user.
+### Step 1: Backend Setup & Database (DONE)
+- [x] Express 5 + Prisma 6 (pinned) + MySQL setup (`backend/prisma/schema.prisma`, initial migration).
+- [x] `app.js`, `server.js`, `config/prisma.js`, `middleware/errorHandler.js`, `GET /api/health`.
 
-## Step 3: Admin CRUD API (DONE)
-- [x] Buses, routes, trips CRUD under `/admin/*`, with zod validation.
-- [x] Block delete when related trips exist.
-- [x] Pagination on the trips list.
+### Step 2: Authentication & Security Hardening (DONE)
+- [x] `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`.
+- [x] `verifyToken` and `requireRole` middleware, `prisma/seed.js` (admin + test user).
+- [x] `helmet`, `CLIENT_URL` CORS allowlist, `32kb` JSON limit, `express-rate-limit` on `/api/auth`, temporary `admin-check` route removed.
 
-## Step 4: Public Search API (DONE)
-- [x] `GET /cities`, `GET /trips/search`, `GET /trips/:id`, `GET /trips/popular-routes`.
-- [x] Calculate `seatsLeft`, `bookedSeats[]`, and `seatLayout[]`.
+### Step 3: Admin CRUD API (DONE)
+- [x] Buses, routes, and paginated trips CRUD under `/api/admin/*` with Zod validation.
+- [x] Referential guards (block deleting buses/routes with trips, or trips with bookings; block bus changes after bookings).
 
-## Step 5: Booking API (DONE)
-- [x] `POST /bookings` using a transaction.
-- [x] `GET /bookings/my`, `GET /bookings/:id`, `PATCH /bookings/:id/cancel`.
-- [x] Admin booking list and status change, `GET /admin/stats`, user list and role change.
+### Step 4: Public Search & Trip Details API (DONE)
+- [x] `GET /api/cities`, `GET /api/trips/search` (single `date` or `dateFrom`–`dateTo` up to 14 days, `type`, `sort`), `GET /api/trips/:id`, `GET /api/trips/popular-routes`.
+- [x] Computes `seatsLeft`, `bookedSeats[]`, `seatLayout[]`, and `isBookable` in Dhaka time (`UTC+6`).
 
-## Step 6: Frontend Setup, Layout, and Auth (DONE)
-- [x] Next.js app (JavaScript, `src/` folder, App Router), shadcn (Radix UI, Nova preset).
-- [x] `lib/api.js`, `lib/auth.js`, `AuthContext`, `useRequireAuth`.
-- [x] Navbar, root layout, Toaster, `/login` and `/register`.
+### Step 5: Booking, Cancellation & Admin Management API (DONE)
+- [x] `POST /api/bookings` inside `prisma.$transaction` with `(tripId, seatNumber)` unique constraint (`409` on conflict).
+- [x] `GET /api/bookings/my`, `GET /api/bookings/:id`, `PATCH /api/bookings/:id/cancel` (deletes `BookingSeat` rows atomically).
+- [x] `GET /api/admin/bookings`, `PATCH /api/admin/bookings/:id/status`, `GET /api/admin/stats`, `GET /api/admin/users`, `PATCH /api/admin/users/:id/role`.
 
-## Step 7: Admin Dashboard UI (DONE)
-- [x] Admin layout with sidebar and role guard.
+### Step 6: Frontend Setup, Layout & Auth (DONE)
+- [x] Next.js 16 (App Router, JavaScript, `src/`), React 19, Tailwind CSS v4, shadcn/ui (Radix UI).
+- [x] `src/lib/api.js`, `src/lib/auth.js`, `src/hooks/useApi.js`, `src/hooks/useRequireAuth.js`, `src/context/AuthContext.js`.
+- [x] Root layout, `Navbar`, `Stepper`, `Toaster` (`sonner`), `/login`, `/register`.
+
+### Step 7: Admin Dashboard UI (DONE)
+- [x] `/admin` layout with role guard and sidebar navigation.
 - [x] Reusable `DataTable`, `ConfirmDialog`, `Pagination`, `StatusBadge`, `PageHeader`, `Field`.
-- [x] Pages: dashboard stats, buses, routes, trips (add, edit, delete via dialogs).
-- [x] Bookings page (status filter, confirm, cancel) and users page (change role).
-- Extra shadcn components used: table, dialog, alert-dialog. Dropdowns are native `<select>` elements.
+- [x] Pages: `/admin` stats, `/admin/buses`, `/admin/routes`, `/admin/trips`, `/admin/bookings`, `/admin/users`.
 
-## Step 8: Public and User Pages (BUILT, verify the journey)
-- [x] Home with SearchForm and popular routes.
-- [x] `/search` results with TripCard, type filter, and sort.
-- [x] `/trips/[id]` SeatGrid with live total (max 4 seats).
-- [x] `/booking/[tripId]/confirm` passenger forms and booking submission.
-- [x] `/my-bookings` with cancel, and `/tickets/[bookingId]` with print.
-- [x] "My Bookings" link in the navbar.
-- [ ] **Verify the full journey:** search, pick seats, book, view ticket, cancel. Also run the double-booking test with two users: the second booking must fail with "seats already booked".
+### Step 8: Customer Journey & UI Redesign (DONE)
+- [x] Home page with `SearchForm` and popular routes cards.
+- [x] `/search` with date-range query, `DateStrip`, `SearchFilters` (AC/Non-AC, time buckets, bus operator), sort buttons, and redesigned `TripCard`.
+- [x] `/trips/[id]` with `TripSummary`, `SeatGrid` (max 4 seats), and `FareSummary`.
+- [x] `/booking/[tripId]/confirm` with passenger 1 prefill, gender picker, and booking summary.
+- [x] `/my-bookings` and printable `/tickets/[bookingId]`.
 
-## Step 9: Polish, Redesign, and Submission (NEXT)
-Functionality
-- [ ] Loading, empty, and error states checked on every page.
-- [ ] Check mobile layout on every page.
-- [ ] Remove the temporary `admin-check` route from `auth.routes.js`.
-- [ ] Custom 404 page and a Footer (optional).
-- [ ] Optional: date filter on the admin trips list.
+## Step 9: Finish Demo Payment Flow (CURRENT)
+1. **Database Schema (`backend/prisma/schema.prisma`):**
+   - [ ] Add `paymentMethod String?`, `paymentRef String?`, and `paidAt DateTime?` to `Booking`.
+   - [ ] Run `npx prisma migrate dev --name add_payment_fields` in `backend/`.
+2. **Backend Expiry Middleware Order (`backend/src/app.js`):**
+   - [ ] Register `app.use("/api", require("./middleware/expireUnpaid"))` **before** `/api`, `/api/admin`, and `/api/bookings` route mounts (currently placed after routes at line 62, so requests finish before cleanup runs).
+3. **Frontend Checkout Page (`frontend/src/app/payment/[bookingId]/page.js`):**
+   - [ ] Replace the placeholder `TicketPage` content in `frontend/src/app/payment/[bookingId]/page.js` with the actual payment checkout UI:
+     - Fetch `GET /bookings/${bookingId}` and handle `CONFIRMED` (redirect to `/payment/${bookingId}/success`) or `CANCELLED`/expired states.
+     - Show live countdown timer from `secondsLeft` (`10` min payment window), trip & fare summary, and payment method picker (`CARD`, `BKASH`, `NAGAD`, `ROCKET`, `UPAY` via `frontend/src/lib/payment.js`).
+     - Submit `POST /bookings/${bookingId}/pay` and redirect to `/payment/${bookingId}/success`.
+4. **Booking Handoff (`frontend/src/app/booking/[tripId]/confirm/page.js`):**
+   - [ ] Send `requirePayment: true` in `POST /bookings` and redirect to `/payment/${res.data.id}` instead of `/tickets/${res.data.id}`.
+5. **Verify Payment & Expiry Flow:**
+   - [ ] Create booking -> lands on `/payment/[id]` as `PENDING` with seats held.
+   - [ ] Pay -> updates to `CONFIRMED` with `TXN-...` reference, redirects to `/payment/[id]/success`, shows transaction details on `/tickets/[id]`.
+   - [ ] Let a `PENDING` booking expire (or test with short window) -> seats are released automatically.
+   - [ ] Confirm `POST /bookings` with `requirePayment: false`/omitted still works for non-payment clients.
 
-Redesign (the UI is intentionally plain until now)
-- [ ] Choose a color theme and set it once in `globals.css` (replace the per-button green classes).
-- [ ] Restyle the shared components first: Navbar, `SearchForm`, `TripCard`, `SeatGrid`, `DataTable`, ticket card.
-- [ ] Improve the home page (hero section, popular routes cards).
-- [ ] Polish the admin layout (sidebar, dashboard cards).
+## Step 10: Polish, Verification & Submission (NEXT)
+1. **UI & Edge-Case Polish:**
+   - [ ] Verify loading, empty, and error states across all public, user, and admin pages.
+   - [ ] Verify mobile responsiveness across search, seat grid, checkout, ticket print, and admin tables.
+   - [ ] Unify primary green theme tokens in `frontend/src/app/globals.css` (optional) and add custom 404 / Footer if desired.
+   - [ ] Optional: add date filter to `/admin/trips` and QR code to `/tickets/[bookingId]`.
+2. **End-to-End & Concurrency Verification:**
+   - [ ] Test full journey: search -> seat selection -> login redirect -> passenger details -> payment -> ticket print -> cancel -> seats freed.
+   - [ ] Test double-booking concurrency with two users selecting the same seat simultaneously -> second request must fail with `409` and return to seat selection.
+   - [ ] Confirm all items in `PRD.md` Section 8 (Success Criteria).
+3. **Submission Artifacts:**
+   - [ ] Expand `backend/prisma/seed.js` (or add a demo seed) with realistic buses, routes, and trips for the next 7 days.
+   - [ ] Update `README.md` with full setup instructions, env variables, test accounts, feature list, and screenshots.
+   - [ ] Export/draw an ER diagram from `backend/prisma/schema.prisma` (e.g., via dbdiagram.io).
 
-Submission
-- [ ] Seed realistic demo data (cities, buses, routes, trips for the next 7 days).
-- [ ] Write `README.md` (setup steps, test logins, features, screenshots).
-- [ ] Draw an ER diagram from the Prisma schema (dbdiagram.io is free).
-- [ ] Test the final checklist in `PRD.md` section 9.
-- [ ] Optional extras: fake payment page, QR code on the ticket, image upload.
+## Optional Future Work: Mobile App (Kotlin + Jetpack Compose)
+- Uses the same REST API (`http://10.0.2.2:5000/api/` on Android emulator, or LAN IP on a physical device).
+- Backward-compatible endpoints (`GET /api/trips/search?date=...`, `POST /api/bookings` defaulting `requirePayment: false`).
+- Recommended stack: Retrofit + OkHttp, Kotlin Serialization, DataStore (JWT), Navigation Compose, ViewModel + StateFlow.
 
-## Optional: Mobile App (Kotlin + Jetpack Compose)
-Only after the website works. It uses the same API.
-- Emulator base URL: `http://10.0.2.2:5000/api/`. Real phone: your PC IP address on the same Wi-Fi.
-- Libraries: Retrofit + OkHttp, Kotlin Serialization, DataStore (token), Navigation Compose, ViewModel + StateFlow.
-- Suggested order: login and register, search, seat picker, booking, my bookings.
+## Running the Project Locally
+1. Start **MySQL** (e.g., via XAMPP).
+2. Backend (`backend/`):
+   - `npm run dev` -> runs on `http://localhost:5000` (`/api/health` checks DB connectivity).
+3. Frontend (`frontend/`):
+   - `npm run dev` -> runs on `http://localhost:3000`.
+4. Open `http://localhost:3000` (keep `CLIENT_URL` in `backend/.env` and `NEXT_PUBLIC_API_URL` in `frontend/.env.local` aligned if testing over LAN).
 
-## Suggested Schedule (about 7 days)
-| Day | Steps |
-|---|---|
-| 1 | Setup, Step 1, Step 2 |
-| 2 | Step 3, Step 4 |
-| 3 | Step 5 |
-| 4 | Step 6, start Step 7 |
-| 5 | Finish Step 7 |
-| 6 | Step 8 |
-| 7 | Step 9, testing, presentation prep |
+Seeded test accounts:
+- **Admin:** `admin@bus.com` / `Admin@123`
+- **User:** `user@bus.com` / `User@123`
 
-## Running the Project (every work session)
-1. Start **MySQL** in XAMPP.
-2. Terminal in `backend`: `npm run dev` (API on http://localhost:5000).
-3. Terminal in `frontend`: `npm run dev` (site on http://localhost:3000).
-4. Open the site at **http://localhost:3000** (not the network IP like 192.168.x.x, because dev mode and the backend CORS rule only allow `localhost`).
-
-Test accounts (from the seed script):
-- Admin: `admin@bus.com` / `Admin@123`
-- User: `user@bus.com` / `User@123`
-
-Opening the site from a phone on the same Wi-Fi needs three changes (only if needed):
-1. `frontend/next.config.mjs`: add `allowedDevOrigins: ["YOUR_PC_IP"]`.
-2. `frontend/.env.local`: `NEXT_PUBLIC_API_URL=http://YOUR_PC_IP:5000/api`.
-3. `backend/.env`: `CLIENT_URL="http://YOUR_PC_IP:3000"`. Restart both servers.
-
-## How to Resume in a New Chat (free-tier tip)
-When you start a new conversation, paste this:
-1. The contents of `PRD.md`, `TECH_STACK.md`, `BACKEND_STRUCTURE.md` (and `FRONTEND_GUIDELINES.md` for frontend work).
-2. A line like: "I finished Steps 1 to 8 (backend complete, admin UI and customer UI built). Now help me with Step 9."
-3. Notes about my setup: JavaScript (not TypeScript), `src/` folder, shadcn with Radix UI, Express 5, Prisma 6, zod 4. API list responses look like `{ data: [...] }`. Native `<select>` elements are used instead of the shadcn Select. Forms use plain React state (no react-hook-form).
-4. Any error message you are stuck on, with the file it came from.
-
-Ask for **one full step at a time** and test before asking for the next. This uses fewer messages than back-and-forth debugging.
+## Notes for Future Sessions
+- **Frontend conventions:** JavaScript (no TypeScript), `src/` App Router, Tailwind CSS v4, shadcn/ui (`radix-ui`), plain React `useState` forms (no `react-hook-form`), native `<select>` elements for dropdowns, `useApi` + `api()` in `src/lib/api.js`.
+- **Backend conventions:** Express 5, Prisma 6 (pinned — do not upgrade), Zod 4, CommonJS modules, responses shaped as `{ data, ... }` or `{ message, data }`.

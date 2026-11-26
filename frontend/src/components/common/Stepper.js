@@ -3,13 +3,14 @@
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 
-const steps = ["Choose Trip", "Select Seats", "Passenger Details", "Ticket"];
+const steps = ["Choose Trip", "Select Seats", "Passenger Details", "Payment", "Ticket"];
 
 function currentStep(pathname) {
   if (pathname.startsWith("/search")) return 0;
   if (pathname.startsWith("/trips/")) return 1;
   if (pathname.startsWith("/booking/")) return 2;
-  if (pathname.startsWith("/tickets/")) return 3;
+  if (pathname.startsWith("/payment/")) return pathname.endsWith("/success") ? 4 : 3;
+  if (pathname.startsWith("/tickets/")) return 4;
   return -1; // not a booking page: show nothing
 }
 

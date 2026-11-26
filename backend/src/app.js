@@ -56,10 +56,10 @@ app.get("/api/health", async (req, res, next) => {
 
 // Routes
 app.use("/api/auth", authLimiter, require("./routes/auth.routes"));
+app.use("/api", require("./middleware/expireUnpaid"));
 app.use("/api/admin", require("./routes/admin.routes"));
 app.use("/api", require("./routes/public.routes"));
 app.use("/api/bookings", require("./routes/bookings.routes"));
-
 app.use(notFound);
 app.use(errorHandler);
 

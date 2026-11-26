@@ -8,28 +8,31 @@ import { api } from "@/lib/api";
 // Public pages:   useApi("/cities", false)   (does not send the login token)
 // Wait for later: useApi(ready ? "/bookings/my" : null)   (null = do not load yet)
 export default function useApi(path, auth = true) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(!!path);
-
-  const load = useCallback(async () => {
-    if (!path) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      setData(await api(path, { auth }));
-    } catch (err) {
-      setData(null);
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [path, auth]);
+  const [result, setResult] = useState({ key: null, data: null });
+  const [nonce, setNonce] = useState(0);
+  const requestKey = path ? `${path}|${auth}|${nonce}` : null;
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!requestKey) return;
+    let cancelled = false;
+    api(path, { auth })
+      .then((data) => {
+        if (!cancelled) setResult({ key: requestKey, data });
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setResult({ key: requestKey, data: null });
+          toast.error(err.message);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestKey, path, auth]);
 
-  return { data, loading, reload: load };
+  const loading = Boolean(requestKey) && result.key !== requestKey;
+  const data = requestKey && result.key === requestKey ? result.data : null;
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+
+  return { data, loading, reload };
 }

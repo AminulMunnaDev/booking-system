@@ -65,13 +65,23 @@ export default function MyBookingsPage() {
                   Booking #{b.id}
                   {b.seats.length > 0 && ` - Seats: ${b.seats.map((s) => s.seatNumber).join(", ")}`}
                 </p>
+                {b.status === "PENDING" && (
+                  <p className="text-xs text-amber-700">Payment pending. Unpaid bookings expire automatically.</p>
+                )}
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <p className="font-bold">{formatPrice(b.totalAmount)}</p>
-                <Link href={`/tickets/${b.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
-                  Ticket
-                </Link>
+                {b.canPay && (
+                  <Link href={`/payment/${b.id}`} className={buttonVariants({ size: "sm" }) + " bg-green-600 hover:bg-green-700"}>
+                    Pay now
+                  </Link>
+                )}
+                {b.status !== "PENDING" && (
+                  <Link href={`/tickets/${b.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    Ticket
+                  </Link>
+                )}
                 {b.canCancel && (
                   <Button variant="destructive" size="sm" onClick={() => setCancelling(b)}>
                     Cancel

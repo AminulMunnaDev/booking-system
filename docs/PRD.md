@@ -1,126 +1,115 @@
-# PRD: Bus Ticket Booking System
+# PRD: Bus Ticket Booking System (BusGo)
 
 ## 1. Overview
-A dynamic web application for booking intercity bus tickets (inspired by Shohoz). Visitors search trips, pick seats, and book tickets. An admin controls all the data (buses, routes, trips, bookings, users) from a backend dashboard.
-
-This is a university web programming project. It must be a dynamic website with a backend where the admin can control the "product" (trips and tickets).
+BusGo is a full-stack intercity bus ticket booking web application (inspired by Shohoz) built as a university web programming project. Customers can search trips across date ranges, filter and sort results, inspect seat maps, book up to 4 seats, complete a simulated payment flow, and view or print e-tickets. Admins control buses, routes, trips, bookings, and users from a protected dashboard.
 
 ## 2. Goals
-- Show a complete full-stack app: frontend, REST API, relational database, authentication, and roles.
-- Give the admin full CRUD control over the product data.
-- Prevent double booking of the same seat.
-- Be finishable by one student in several days, using free tools only.
-- Build a simple, working UI first, then redesign it once everything works.
+- Deliver a complete full-stack architecture: Next.js App Router frontend, Express REST API, MySQL relational database via Prisma, JWT authentication, and role-based access control.
+- Give administrators full CRUD and operational control over buses, routes, trips, bookings, and user roles.
+- Guarantee seat integrity using database transactions and composite unique constraints so two users can never book the same seat.
+- Support an end-to-end customer journey with clear feedback, responsive layout, and a simulated local payment flow using only free tools.
 
 ## 3. Users and Roles
 | Role | Description |
 |---|---|
-| Guest | Not logged in. Can search trips and view seat availability. Must log in to book. |
-| User | Registered customer. Books seats, views and cancels own bookings, prints tickets. |
-| Admin | Manages buses, routes, trips, bookings, and users. Sees dashboard stats. |
+| Guest | Unauthenticated visitor. Can search trips, browse popular routes, and view seat maps. Redirected to login (preserving destination) before booking. |
+| User | Registered customer (`USER`). Selects seats, submits passenger details, pays for pending bookings, views/cancels own bookings, and prints tickets. |
+| Admin | System administrator (`ADMIN`). Manages buses, routes, trips, bookings, and user roles, and views dashboard analytics. |
 
 ## 4. Features
 
-### Must have (MVP)
-1. Register, login, logout (JWT auth, bcrypt passwords).
-2. Role-based access: `USER` and `ADMIN`.
-3. Admin CRUD: buses, routes, trips.
-4. Public trip search by From, To, Date.
-5. Search results show price, departure time, bus type, seats left.
-6. Seat selection page (grid: available / booked / selected). Max 4 seats per booking.
-7. Booking with passenger details; seats are locked by a database transaction.
-8. "My Bookings" page with cancel option.
-9. Printable ticket page.
-10. Admin: view all bookings, confirm or cancel.
-11. Admin dashboard stats: total bookings, revenue, bookings today, popular routes.
+### Core Features (Implemented)
+1. **Authentication & Security:** Register, login, profile lookup (`/api/auth/me`), and logout with `bcryptjs` password hashing, JWT bearer tokens, `helmet` security headers, `CLIENT_URL` CORS allowlist, bounded JSON payloads (`32kb`), and rate limiting on `/api/auth` (`15` requests per 15 minutes).
+2. **Role-Based Access Control:** Separate `USER` and `ADMIN` roles enforced by backend middleware (`verifyToken`, `requireRole`) and frontend guards (`useRequireAuth`, admin layout guard).
+3. **Admin CRUD & Operations:**
+   - Buses, Routes, and paginated Trips CRUD under `/api/admin/*` and `/admin/*`.
+   - Bookings management with status/date filters, pagination, confirm, and cancel actions.
+   - User management (list users, promote/demote roles).
+   - Dashboard stats: total active bookings, cancelled bookings, confirmed revenue, bookings today, user count, total/upcoming trips, and top 5 popular routes.
+4. **Public Trip Search & Filtering:**
+   - Home page search form and top popular routes cards.
+   - `/search` supports single-day or multi-day search (up to 14 days via `dateFrom`/`dateTo`), a `DateStrip` day selector, filters (AC/Non-AC, departure/arrival time buckets, bus operator), and sorting (earliest, latest, price low-to-high, price high-to-low).
+5. **Seat Selection (`/trips/[id]`):**
+   - 2+2 seat map (`SeatGrid`) displaying available, booked, and selected seats (max 4 seats per booking) with live `TripSummary` and `FareSummary`.
+   - Displays departure/bookability status and redirects unauthenticated users through `/login?next=...`.
+6. **Passenger Details & Atomic Booking (`/booking/[tripId]/confirm`):**
+   - Prefills Passenger 1 with the logged-in user's name and phone; optional phone and gender per seat.
+   - Creates `Booking` and `BookingSeat` rows inside `prisma.$transaction`, returning `409 Conflict` if any selected seat was booked concurrently.
+7. **My Bookings & Printable E-Ticket (`/my-bookings`, `/tickets/[bookingId]`):**
+   - View booking history with status badges (`PENDING`, `CONFIRMED`, `CANCELLED`), seat list, and cancellation dialog.
+   - Print-ready ticket view with navbar, stepper, and action buttons hidden when printing (`print:hidden`).
+8. **Validation & Error Handling:** Zod 4 request validation with structured field errors (`{ field, message }`), Prisma error mapping (`P2002`, `P2003`, `P2025`), and clean API error responses without internal leaks.
 
-### Should have
-- Form validation with clear messages (Zod on the backend, field errors shown in the forms).
-- Search filters: bus type (AC / Non-AC), sort by price or time.
-- Pagination on admin tables.
-- Admin can manage users (view, change role).
+### Demo Payment Flow (In Progress)
+- Simulated checkout supporting `CARD`, `BKASH`, `NAGAD`, `ROCKET`, and `UPAY` payment methods.
+- 10-minute seat hold window (`PAYMENT_WINDOW_MINUTES = 10`) for `PENDING` bookings (`requirePayment: true`), generating a demo transaction reference (`TXN-...`) on payment.
+- Automatic expiration of unpaid `PENDING` bookings to release held seats.
+- 5-step booking progress `Stepper` (`Choose Trip` -> `Select Seats` -> `Passenger Details` -> `Payment` -> `Ticket`), `/payment/[bookingId]` checkout page, and `/payment/[bookingId]/success` confirmation page.
 
-### Nice to have (only if time remains)
-- Simulated payment page (bKash / Nagad style, fake).
-- QR code on ticket.
-- Bus image upload.
-- Email confirmation.
-- Operator role (bus companies manage only their own buses).
-- Date filter on the admin trips list.
-- Mobile app (Kotlin + Jetpack Compose) using the same REST API, built after the website is finished.
+### Nice to Have (Post-Core / Optional)
+- QR code on printable e-tickets.
+- Date filter on the admin trips table.
+- Custom 404 page and site footer.
+- Mobile client (Kotlin + Jetpack Compose) consuming the same REST API (backward-compatible `?date=` search and `requirePayment: false` booking default).
 
 ## 5. Out of Scope
-- Real payment gateway integration.
-- Real-time seat locking across many users (we only use the DB unique constraint).
-- Multi-language support.
+- Real payment gateway integrations or live financial transactions.
+- Distributed or WebSocket-based real-time seat locking beyond database transactions and unique constraints.
+- Multi-language localization.
 
 ## 6. Business Rules
 
-### Booking and seats
-- A seat can belong to only one active booking per trip (database unique rule on trip + seat number).
-- A booking has 1 to 4 seats. The same seat cannot be selected twice in one booking.
-- Seats are labelled A1, A2, A3, A4, B1 ... (4 per row, 2 + 2 layout). A 40-seat bus uses A1 to J4.
-- A booking is all or nothing: if any seat is already taken, the whole booking fails with a clear message and the user is sent back to the seat page.
-- New bookings are CONFIRMED immediately (there is no payment step).
-- Cancelling a booking frees its seats immediately (the seat rows are deleted, so a cancelled booking shows no seats).
-- A cancelled booking cannot be confirmed again. The user must book again.
-- A trip in the past, or one that has already departed, cannot be booked.
-- Users cannot cancel a trip that has already departed. Admins can.
-- Search hides today's trips that have already departed.
-- All dates and times use Bangladesh time (UTC+6).
+### Booking, Seats, and Payment
+- A seat on a trip can belong to at most one active booking (enforced by `@@unique([tripId, seatNumber])` on `BookingSeat`).
+- A booking contains `1` to `4` distinct seats. Seats use 2+2 row labels (`A1`–`A4`, `B1`–`B4`, ...; a 40-seat bus spans `A1`–`J4`).
+- Booking creation is atomic: if any requested seat is already booked, the transaction rolls back with `409 Conflict` and returns the user to seat selection.
+- When `requirePayment: true`, bookings start as `PENDING` and hold seats for `10` minutes (`secondsLeft` countdown). Unpaid expired bookings are cancelled and their seats are released. When `requirePayment` is `false` or omitted, bookings are `CONFIRMED` immediately.
+- Paying a `PENDING` booking uses an atomic status-guarded update (`where: { id, status: "PENDING" }`) so double submissions cannot pay twice.
+- Cancelling a booking sets status to `CANCELLED` and deletes its `BookingSeat` rows inside a transaction so seats become available immediately.
+- Cancelled bookings cannot be re-confirmed; users must create a new booking.
+- Past or already-departed trips cannot be booked, and search hides today's already-departed trips.
+- Normal users cannot cancel a booking after the trip has departed; admins can cancel any non-cancelled booking.
+- All date/time comparisons use Bangladesh time (`UTC+6`, `Asia/Dhaka`).
 
-### Customer flow
-- Guests can search and view seats, but must log in to continue. After login they return to the trip they chose.
-- On the passenger page the first passenger is prefilled with the logged-in user's name and phone.
-- The ticket page can be printed. The navbar and buttons are hidden when printing.
+### Customer Flow
+- Guests can browse and inspect seat availability, then return to `/trips/[id]` after logging in via `?next=`.
+- Passenger 1 defaults to the logged-in user's name and phone on the confirmation form.
+- Ticket printing hides navigation and interactive controls.
 
-### Access and accounts
-- A user can only view and cancel their own bookings. Admins can view and cancel any booking.
-- Only admins can access `/admin` pages and `/api/admin` endpoints. Normal users are redirected to the home page.
-- Registration always creates a USER. The admin account is created only by the seed script.
-- An admin cannot change their own role.
-- Email is stored in lowercase and must be unique. Password must be at least 6 characters.
+### Access and Accounts
+- Users can view, pay for, and cancel only their own bookings; admins can view and manage any booking.
+- `/admin` UI routes and `/api/admin/*` endpoints require `ADMIN` role.
+- Public registration always creates `USER` accounts; admin accounts are seeded. Admins cannot change their own role.
+- Email is normalized to lowercase and must be unique; password minimum is 6 characters.
 
-### Product data
-- A route (From city + To city) must be unique, and From and To must be different.
-- A bus plate number must be unique.
-- A bus or route that has trips cannot be deleted (a clear message is shown).
-- A trip cannot be created with a past travel date.
-- The same bus cannot have two trips at the same date and departure time.
-- The bus of a trip cannot be changed once seats are booked on it.
-- A trip with bookings cannot be deleted. Admin sets it inactive (isActive = false) to hide it from search.
-- Times use 24-hour HH:MM format. Prices are whole numbers in BDT.
+### Product Data & Statistics
+- Routes (`fromCity` + `toCity`) must be unique and `fromCity !== toCity`.
+- Bus `plateNo` must be unique.
+- Buses or routes linked to trips cannot be deleted.
+- Trips cannot be created in the past, cannot share the same bus at the same `travelDate` and `departureTime`, cannot change bus once seats are booked, and cannot be deleted once bookings exist (set `isActive = false` instead).
+- Times use 24-hour `HH:MM` format; prices are integer BDT values.
+- Revenue counts only `CONFIRMED` bookings; booking counts and popular routes exclude `CANCELLED` bookings.
 
-### Statistics
-- Revenue counts only CONFIRMED bookings.
-- Booking counts and popular routes ignore CANCELLED bookings.
+## 7. Tech Stack & Constraints
+- **Frontend (`/frontend`):** Next.js 16 (App Router, JavaScript, `src/`), React 19, Tailwind CSS v4 (`@tailwindcss/turbopack`), shadcn/ui (Radix UI), `lucide-react`, `sonner`, `fetch` wrapper (`src/lib/api.js` + `useApi`).
+- **Backend (`/backend`):** Node.js, Express 5, MySQL, Prisma 6 (pinned, do not upgrade), Zod 4, `jsonwebtoken`, `bcryptjs`, `helmet`, `cors`, `express-rate-limit`, `morgan`.
+- **UI Architecture:** Domain logic lives in `src/lib/*`, `src/hooks/*`, and `src/context/*`; shared UI lives in small reusable components (`Stepper`, `SearchForm`, `DateStrip`, `SearchFilters`, `TripCard`, `SeatGrid`, `TripSummary`, `FareSummary`, `DataTable`, `ConfirmDialog`, `Pagination`, `StatusBadge`, `PageHeader`, `Field`).
 
-## 7. Constraints
-- Free tools only. Free-tier AI chat has limited messages, so work in small steps and keep these docs handy.
-- Several days of development time.
-- Stack: Next.js + Tailwind + shadcn/ui, Express, MySQL, Prisma 6 (pinned, do not upgrade).
+## 8. Success Criteria
+- Admin can create buses, routes, and trips that immediately appear in public search.
+- Users can search trips, select seats, complete booking/payment, view/print tickets, and cancel bookings (releasing seats).
+- Concurrent attempts to book the same seat allow only one booking to succeed (`409 Conflict` for the second).
+- Unpaid `PENDING` bookings expire after 10 minutes and release held seats.
+- Dashboard statistics accurately reflect active bookings, cancellations, revenue, and popular routes.
 
-## 8. UI Approach
-- The first version of the UI is intentionally plain: tables, dialogs, native dropdowns, and simple cards.
-- Logic is kept separate from styling. Shared pieces (`DataTable`, `PageHeader`, `StatusBadge`, `ConfirmDialog`, `Field`, `SeatGrid`, `TripCard`, `SearchForm`) are small components, so a redesign only needs changes in a few files.
-- A redesign pass happens after all features work (see Step 9 in `IMPLEMENTATION_PLAN.md`).
-
-## 9. Success Criteria
-- Admin can create a bus, route, and trip, and it appears in public search.
-- A user can book seats, and those seats show as booked for everyone else.
-- Two users cannot book the same seat on the same trip.
-- Cancelling a booking makes the seats available again.
-- Dashboard numbers match the data.
-
-## 10. Progress
-- [x] Step 1: Backend setup, database, Prisma schema
-- [x] Step 2: Authentication (register, login, me, role middleware, seed)
+## 9. Progress
+- [x] Step 1: Backend setup, MySQL, Prisma 6 schema and initial migration
+- [x] Step 2: Authentication (`register`, `login`, `me`, JWT/role middleware, seed)
 - [x] Step 3: Admin CRUD API (buses, routes, trips)
-- [x] Step 4: Public search API (cities, search, trip details, popular routes)
-- [x] Step 5: Booking API, cancel, admin bookings, users, dashboard stats
-- [x] Step 6: Frontend setup, layout, navbar, login and register pages, route guard
-- [x] Step 7: Admin dashboard UI (dashboard, buses, routes, trips, bookings, users)
-- [x] Step 8: Public and user pages (home search, results, seat picker, booking, my bookings, ticket). Full journey test still to be confirmed.
-- [ ] Step 9: Polish, redesign, README, ER diagram
-
-The backend is complete and both the admin and customer screens are built. Remaining work is testing, polish, and the redesign. See `IMPLEMENTATION_PLAN.md`.
+- [x] Step 4: Public search & trip details API (cities, date-range search, trip details, popular routes)
+- [x] Step 5: Transactional booking API, cancellation, admin bookings, users, dashboard stats, security hardening
+- [x] Step 6: Frontend setup, layout, navbar, auth context, route guards, `/login` & `/register`
+- [x] Step 7: Admin dashboard UI (stats, buses, routes, trips, bookings, users)
+- [x] Step 8: Customer UI + Search/Seat/Booking redesign (`SearchForm`, `DateStrip`, `SearchFilters`, `TripCard`, `SeatGrid`, `Stepper`, `TripSummary`, `FareSummary`, `my-bookings`, `tickets`)
+- [ ] Step 9: Complete Demo Payment flow (Prisma payment fields, checkout page, booking handoff, expiry middleware order)
+- [ ] Step 10: Final polish, end-to-end verification, `README.md`, and ER diagram

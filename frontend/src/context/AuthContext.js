@@ -14,15 +14,27 @@ export function AuthProvider({ children }) {
 
   // On app start: if a token exists, ask the backend who we are
   useEffect(() => {
+    let cancelled = false;
     const token = getToken();
     if (!token) {
-      setLoading(false);
-      return;
+      Promise.resolve().then(() => {
+        if (!cancelled) setLoading(false);
+      });
+      return () => {
+        cancelled = true;
+      };
     }
     api("/auth/me", { redirectOn401: false })
-      .then((data) => setUser(data.user))
+      .then((data) => {
+        if (!cancelled) setUser(data.user);
+      })
       .catch(() => clearToken())
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function login(email, password) {

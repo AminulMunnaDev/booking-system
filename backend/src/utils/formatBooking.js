@@ -1,4 +1,5 @@
 const { hasDeparted } = require("./dhakaTime");
+const { PAYMENT_WINDOW_MINUTES } = require("./payment");
 
 // Use this include whenever you load a booking
 const bookingInclude = {
@@ -7,11 +8,22 @@ const bookingInclude = {
 };
 
 function formatBooking(b) {
+  const expiresAtMs = new Date(b.createdAt).getTime() + PAYMENT_WINDOW_MINUTES * 60 * 1000;
+  // Only unpaid (PENDING) bookings have a countdown
+  const expiresAt = b.status === "PENDING" ? new Date(expiresAtMs).toISOString() : null;
+  const secondsLeft = b.status === "PENDING" ? Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000)) : null;
+
   return {
     id: b.id,
     status: b.status,
     totalAmount: b.totalAmount,
     createdAt: b.createdAt,
+    expiresAt,
+    paymentMethod: b.paymentMethod ?? null,
+    paymentRef: b.paymentRef ?? null,
+    paidAt: b.paidAt ?? null,
+    secondsLeft,
+    canPay: b.status === "PENDING" && secondsLeft > 0,
     canCancel:
       b.status !== "CANCELLED" && b.trip ? !hasDeparted(b.trip.travelDate, b.trip.departureTime) : false,
     user: b.user
@@ -24,12 +36,8 @@ function formatBooking(b) {
           departureTime: b.trip.departureTime,
           arrivalTime: b.trip.arrivalTime,
           price: b.trip.price,
-          route: b.trip.route
-            ? { fromCity: b.trip.route.fromCity, toCity: b.trip.route.toCity }
-            : undefined,
-          bus: b.trip.bus
-            ? { name: b.trip.bus.name, type: b.trip.bus.type }
-            : undefined,
+          route: { fromCity: b.trip.route.fromCity, toCity: b.trip.route.toCity },
+          bus: { name: b.trip.bus.name, type: b.trip.bus.type },
         }
       : undefined,
     seats: (b.seats || []).map((s) => ({

@@ -5,9 +5,10 @@ import { useParams } from "next/navigation";
 import useApi from "@/hooks/useApi";
 import useRequireAuth from "@/hooks/useRequireAuth";
 import StatusBadge from "@/components/common/StatusBadge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, formatTime, formatPrice } from "@/lib/format";
+import { formatDateTime, methodLabel } from "@/lib/payment";
 
 export default function TicketPage() {
   const { bookingId } = useParams();
@@ -24,10 +25,23 @@ export default function TicketPage() {
         <Link href="/my-bookings" className="text-sm text-green-600 hover:underline">
           Back to my bookings
         </Link>
-        <Button onClick={() => window.print()} className="bg-green-600 hover:bg-green-700">
-          Print ticket
-        </Button>
+        {b.status === "CONFIRMED" && (
+          <Button onClick={() => window.print()} className="bg-green-600 hover:bg-green-700">
+            Print ticket
+          </Button>
+        )}
       </div>
+
+      {b.status === "PENDING" && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800 print:hidden">
+          <span>Payment pending. Pay to confirm your seats.</span>
+          {b.canPay && (
+            <Link href={`/payment/${b.id}`} className={buttonVariants({ size: "sm" }) + " bg-green-600 hover:bg-green-700"}>
+              Pay now
+            </Link>
+          )}
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -70,7 +84,16 @@ export default function TicketPage() {
             </div>
           )}
 
-          <p className="border-t pt-3 text-lg font-bold">Total paid: {formatPrice(b.totalAmount)}</p>
+          <div className="space-y-1 border-t pt-3">
+            <p className="text-lg font-bold">
+              {b.status === "CONFIRMED" ? "Total paid" : "Total"}: {formatPrice(b.totalAmount)}
+            </p>
+            {b.paymentRef && (
+              <p className="text-xs text-slate-500">
+                Paid via {methodLabel(b.paymentMethod)} on {formatDateTime(b.paidAt)}. Transaction ID: {b.paymentRef}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

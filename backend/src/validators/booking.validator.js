@@ -1,4 +1,5 @@
 const { z } = require("zod");
+const { PAYMENT_METHODS } = require("../utils/payment");
 
 const passengerSchema = z.object({
   seatNumber: z.string().trim().regex(/^[A-Z]\d{1,2}$/, "Invalid seat number"),
@@ -7,6 +8,8 @@ const passengerSchema = z.object({
   gender: z.enum(["M", "F", "O"]).optional(),
 });
 
+// requirePayment: true  -> booking starts as PENDING and must be paid within the payment window
+// requirePayment: false -> booking is CONFIRMED immediately (default, the mobile app still works)
 const createBookingSchema = z
   .object({
     tripId: z.coerce.number().int().positive("Trip is required"),
@@ -14,11 +17,16 @@ const createBookingSchema = z
       .array(passengerSchema)
       .min(1, "Select at least one seat")
       .max(4, "You can book at most 4 seats at a time"),
+    requirePayment: z.boolean().optional(),
   })
   .refine((v) => new Set(v.passengers.map((p) => p.seatNumber)).size === v.passengers.length, {
     message: "The same seat was selected twice",
     path: ["passengers"],
   });
+
+const paymentSchema = z.object({
+  method: z.enum(PAYMENT_METHODS, { error: "Choose a valid payment method" }),
+});
 
 const bookingStatusSchema = z.object({
   status: z.enum(["CONFIRMED", "CANCELLED"], { error: "Status must be CONFIRMED or CANCELLED" }),
@@ -38,4 +46,10 @@ const adminBookingQuerySchema = z.object({
     .optional(),
 });
 
-module.exports = { createBookingSchema, bookingStatusSchema, roleSchema, adminBookingQuerySchema };
+module.exports = {
+  createBookingSchema,
+  paymentSchema,
+  bookingStatusSchema,
+  roleSchema,
+  adminBookingQuerySchema,
+};
