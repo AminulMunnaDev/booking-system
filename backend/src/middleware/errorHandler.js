@@ -19,6 +19,11 @@ function errorHandler(err, req, res, next) {
     return res.status(409).json({ message: "Duplicate value, this record already exists" });
   }
 
+  // Prisma foreign key / relation constraint
+  if (err.code === "P2003") {
+    return res.status(409).json({ message: "Cannot complete action because related records exist or reference is invalid" });
+  }
+
   // Prisma record not found
   if (err.code === "P2025") {
     return res.status(404).json({ message: "Record not found" });

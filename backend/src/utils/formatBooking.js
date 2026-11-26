@@ -24,8 +24,12 @@ function formatBooking(b) {
           departureTime: b.trip.departureTime,
           arrivalTime: b.trip.arrivalTime,
           price: b.trip.price,
-          route: { fromCity: b.trip.route.fromCity, toCity: b.trip.route.toCity },
-          bus: { name: b.trip.bus.name, type: b.trip.bus.type },
+          route: b.trip.route
+            ? { fromCity: b.trip.route.fromCity, toCity: b.trip.route.toCity }
+            : undefined,
+          bus: b.trip.bus
+            ? { name: b.trip.bus.name, type: b.trip.bus.type }
+            : undefined,
         }
       : undefined,
     seats: (b.seats || []).map((s) => ({

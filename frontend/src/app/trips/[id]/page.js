@@ -7,10 +7,10 @@ import { toast } from "sonner";
 import useApi from "@/hooks/useApi";
 import { useAuth } from "@/context/AuthContext";
 import SeatGrid from "@/components/seats/SeatGrid";
-import { Badge } from "@/components/ui/badge";
+import TripSummary from "@/components/trips/TripSummary";
+import FareSummary from "@/components/trips/FareSummary";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDate, formatTime, formatPrice } from "@/lib/format";
+import { formatPrice } from "@/lib/format";
 
 const MAX_SEATS = 4;
 
@@ -37,7 +37,6 @@ export default function TripPage() {
 
   // Keep selected seats in seat order (A1, A2, B1 ...)
   const sorted = [...selected].sort((a, b) => trip.seatLayout.indexOf(a) - trip.seatLayout.indexOf(b));
-  const total = trip.price * selected.length;
 
   function toggle(seat) {
     if (selected.includes(seat)) setSelected(selected.filter((s) => s !== seat));
@@ -54,53 +53,90 @@ export default function TripPage() {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-5">
-      <div className="md:col-span-3">
-        <h1 className="mb-4 text-xl font-semibold">Select your seats</h1>
-        <SeatGrid
-          seatLayout={trip.seatLayout}
-          bookedSeats={trip.bookedSeats}
-          selected={selected}
-          onToggle={toggle}
-        />
+    <div className="space-y-6">
+      <button type="button" onClick={() => router.back()} className="text-sm text-green-600 hover:underline">
+        Back to results
+      </button>
+
+      {/* Trip overview */}
+      <div className="flex flex-col gap-4 rounded-lg border bg-white p-4 md:flex-row md:items-center md:justify-between">
+        <div className="md:max-w-md md:flex-1">
+          <TripSummary trip={trip} />
+        </div>
+        <div className="flex gap-6 text-sm md:text-right">
+          <div>
+            <p className="text-xs text-slate-500">Price per seat</p>
+            <p className="text-lg font-bold">{formatPrice(trip.price)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-slate-500">Seats available</p>
+            <p className="text-lg font-bold">
+              {trip.seatsLeft} <span className="text-sm font-normal text-slate-400">of {trip.bus.totalSeats}</span>
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="md:col-span-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {trip.route.fromCity} to {trip.route.toCity}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <p>
-              {formatDate(trip.travelDate)}, {formatTime(trip.departureTime)}
-              {trip.arrivalTime && ` to ${formatTime(trip.arrivalTime)}`}
-            </p>
-            <p className="flex items-center gap-2">
-              {trip.bus.name}
-              <Badge variant="outline">{trip.bus.type === "AC" ? "AC" : "Non-AC"}</Badge>
-            </p>
-            <p>{trip.seatsLeft} seats left</p>
-            <p>Price per seat: {formatPrice(trip.price)}</p>
+      <div className="grid gap-6 md:grid-cols-5">
+        {/* Seat map */}
+        <div className="rounded-lg border bg-slate-50 p-4 md:col-span-3">
+          <h1 className="mb-4 text-lg font-semibold">Select your seats</h1>
+          <SeatGrid
+            seatLayout={trip.seatLayout}
+            bookedSeats={trip.bookedSeats}
+            selected={selected}
+            onToggle={toggle}
+          />
+        </div>
 
-            <div className="border-t pt-3">
-              <p className="font-medium">Selected seats: {sorted.length ? sorted.join(", ") : "none"}</p>
-              <p className="text-lg font-bold">Total: {formatPrice(total)}</p>
+        {/* Selection */}
+        <div className="md:col-span-2">
+          <div className="space-y-4 rounded-lg border bg-white p-4 md:sticky md:top-24">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Your selection</h2>
+              <span className="text-xs text-slate-500">
+                {selected.length} of {MAX_SEATS} seats
+              </span>
             </div>
 
-            {!trip.isBookable && <p className="font-medium text-red-600">This trip has already departed.</p>}
+            {sorted.length === 0 ? (
+              <p className="text-sm text-slate-500">Tap a seat on the map to select it.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {sorted.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggle(s)}
+                    className="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700 hover:bg-green-100"
+                    aria-label={`Remove seat ${s}`}
+                  >
+                    {s} &times;
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="border-t pt-3">
+              <FareSummary seats={sorted} price={trip.price} />
+            </div>
+
+            {!trip.isBookable && <p className="text-sm font-medium text-red-600">This trip has already departed.</p>}
 
             <Button
               className="w-full bg-green-600 hover:bg-green-700"
               disabled={selected.length === 0 || !trip.isBookable}
               onClick={onContinue}
             >
-              {user ? "Continue" : "Login to continue"}
+              {user ? "Continue to passenger details" : "Login to continue"}
             </Button>
-            <p className="text-xs text-slate-500">You can book up to {MAX_SEATS} seats at a time.</p>
-          </CardContent>
-        </Card>
+
+            <ul className="space-y-1 text-xs text-slate-500">
+              <li>Up to {MAX_SEATS} seats per booking.</li>
+              <li>Free cancellation any time before departure.</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
